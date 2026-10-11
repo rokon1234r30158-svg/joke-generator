@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random Joke Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #4c1d95 100%);
+      color: #f5f3ff;
+      padding: 20px;
+    }
+
+    .container {
+      width: min(600px, 100%);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      padding: 40px 30px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #d8b4fe, #f9a8d4, #a5b4fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #d8d1ff;
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+
+    .joke-box {
+      min-height: 180px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 30px 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 1.15rem;
+      line-height: 1.8;
+      color: #ede9fe;
+      margin-bottom: 25px;
+      box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.1);
+    }
+
+    .joke-box.loading {
+      opacity: 0.7;
+      font-style: italic;
+      color: #d8d1ff;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      border: none;
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: white;
+      padding: 13px 28px;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 12px 25px rgba(168, 85, 247, 0.4);
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(168, 85, 247, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
+    }
+
+    .category-select {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f5f3ff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    .category-select:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .joke-counter {
+      text-align: center;
+      color: #d8d1ff;
+      font-size: 0.85rem;
+      margin-top: 15px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px 20px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .joke-box {
+        min-height: 150px;
+        font-size: 1rem;
+        padding: 20px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>😂 Joke Generator</h1>
+    <p class="subtitle">Get a random joke every time!</p>
+
+    <select id="categorySelect" class="category-select">
+      <option value="">Any Category</option>
+      <option value="Programming">Programming</option>
+      <option value="Knock-Knock">Knock-Knock</option>
+      <option value="General">General</option>
+    </select>
+
+    <div id="jokeBox" class="joke-box loading">
+      Loading a joke...
+    </div>
+
+    <div class="btn-group">
+      <button id="newJokeBtn" class="btn">Get Another Joke</button>
+      <button id="copyBtn" class="btn btn-secondary">📋 Copy</button>
+    </div>
+
+    <div class="joke-counter">
+      <span id="jokeCount">0</span> jokes loaded
+    </div>
+  </div>
+
+  <script>
+    const jokeBox = document.getElementById("jokeBox");
+    const newJokeBtn = document.getElementById("newJokeBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const categorySelect = document.getElementById("categorySelect");
+    const jokeCount = document.getElementById("jokeCount");
+
+    let currentJoke = "";
+    let jokesLoaded = 0;
+
+    function getApiUrl() {
+      const category = categorySelect.value;
+      const baseUrl = "https://v2.jokeapi.dev/joke/";
+      const categoryPart = category || "Any";
+      return `${baseUrl}${categoryPart}?blacklistFlags=nsfw,religious,political,racist,sexist`;
+    }
+
+    async function fetchJoke() {
+      jokeBox.textContent = "Loading a joke...";
+      jokeBox.classList.add("loading");
+      newJokeBtn.disabled = true;
+      copyBtn.disabled = true;
+
+      try {
+        const response = await fetch(getApiUrl());
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch joke");
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.message || "Something went wrong");
+        }
+
+        if (data.type === "single") {
+          currentJoke = data.joke;
+          jokeBox.textContent = currentJoke;
+        } else {
+          currentJoke = `${data.setup}\n\n${data.delivery}`;
+          jokeBox.innerHTML = `<div><div>${data.setup}</div><br /><strong>${data.delivery}</strong></div>`;
+        }
+
+        jokesLoaded++;
+        jokeCount.textContent = jokesLoaded;
+      } catch (error) {
+        jokeBox.textContent = "Oops! Could not load a joke right now. Try again.";
+        console.error(error);
+      } finally {
+        jokeBox.classList.remove("loading");
+        newJokeBtn.disabled = false;
+        copyBtn.disabled = false;
+      }
+    }
+
+    newJokeBtn.addEventListener("click", fetchJoke);
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(currentJoke);
+      copyBtn.textContent = "✅ Copied!";
+      setTimeout(() => {
+        copyBtn.textContent = "📋 Copy";
+      }, 2000);
+    });
+
+    categorySelect.addEventListener("change", fetchJoke);
+
+    // Load first joke on page load
+    fetchJoke();
+  </script>
+</body>
+</html>
